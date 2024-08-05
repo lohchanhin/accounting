@@ -22,6 +22,10 @@ class _NumericInputState extends State<NumericInput> {
   Widget build(BuildContext context) {
     return Column(
       children: <Widget>[
+        Text(
+          'Amount: \$${amount.toStringAsFixed(2)}',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
         GridView.builder(
           shrinkWrap: true,
           itemCount: 12,
@@ -39,6 +43,12 @@ class _NumericInputState extends State<NumericInput> {
                   widget.onValueChanged(amount);
                 },
                 child: Text('${index + 1}'),
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.all(20),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
               );
             } else if (index == 9) {
               return ElevatedButton(
@@ -49,6 +59,12 @@ class _NumericInputState extends State<NumericInput> {
                   widget.onValueChanged(amount);
                 },
                 child: Text('C'),
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.all(20),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
               );
             } else if (index == 10) {
               return ElevatedButton(
@@ -59,6 +75,12 @@ class _NumericInputState extends State<NumericInput> {
                   widget.onValueChanged(amount);
                 },
                 child: Text('0'),
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.all(20),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
               );
             } else {
               return ElevatedButton(
@@ -69,6 +91,12 @@ class _NumericInputState extends State<NumericInput> {
                   widget.onValueChanged(amount);
                 },
                 child: Text('.'),
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.all(20),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
               );
             }
           },
@@ -79,12 +107,19 @@ class _NumericInputState extends State<NumericInput> {
             controller: widget.noteController,
             decoration: InputDecoration(
               labelText: 'Note',
+              border: OutlineInputBorder(),
             ),
           ),
         ),
         ElevatedButton(
           onPressed: widget.onAddTransaction,
           child: Text('Add Transaction'),
+          style: ElevatedButton.styleFrom(
+            padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
         ),
       ],
     );

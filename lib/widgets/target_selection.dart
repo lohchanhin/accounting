@@ -1,9 +1,9 @@
+// target_selection.dart
 import 'package:flutter/material.dart';
 
 class TargetSelection extends StatelessWidget {
   final String category;
   final IconData icon;
-  final double? budget;
   final String selectedCategory;
   final Function(String) onCategorySelected;
 
@@ -11,7 +11,6 @@ class TargetSelection extends StatelessWidget {
     Key? key,
     required this.category,
     required this.icon,
-    this.budget,
     required this.selectedCategory,
     required this.onCategorySelected,
   }) : super(key: key);
@@ -25,14 +24,17 @@ class TargetSelection extends StatelessWidget {
           Icon(icon),
           SizedBox(width: 4),
           Text(category),
-          if (budget != null) SizedBox(width: 4),
-          if (budget != null) Text('(\$${budget!.toStringAsFixed(2)})'),
         ],
       ),
       selected: selectedCategory == category,
       onSelected: (selected) {
         onCategorySelected(category);
       },
+      selectedColor: Colors.blue,
+      backgroundColor: Colors.grey[200],
+      labelStyle: TextStyle(
+        color: selectedCategory == category ? Colors.white : Colors.black,
+      ),
     );
   }
 }

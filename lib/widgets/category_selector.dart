@@ -1,17 +1,20 @@
+// category_selector.dart
 import 'package:flutter/material.dart';
 import 'target_selection.dart';
 
 class CategorySelector extends StatefulWidget {
-  final List<Map<String, dynamic>> categories; // 類別列表
-  final String selectedCategory; // 當前選中的類別
-  final Function(String) onCategorySelected; // 當類別被選中時的回調函數
-  final bool isExpense; // 標誌是支出還是收入
+  final List<Map<String, dynamic>> categories; // 类别列表
+  final String selectedCategory; // 当前选中的类别
+  final Function(String) onCategorySelected; // 当类别被选中时的回调函数
+  final bool isExpense; // 标志是支出还是收入
+  final Function(bool) onExpenseToggle; // 切换支出或收入的回调函数
 
   CategorySelector({
     required this.categories,
     required this.selectedCategory,
     required this.onCategorySelected,
     required this.isExpense,
+    required this.onExpenseToggle,
   });
 
   @override
@@ -27,10 +30,10 @@ class _CategorySelectorState extends State<CategorySelector> {
     _isExpense = widget.isExpense;
   }
 
-  void _onCategorySelected(String category) {
+  void _toggleExpense(bool isExpense) {
     setState(() {
-      _isExpense = category == '支出';
-      widget.onCategorySelected(category);
+      _isExpense = isExpense;
+      widget.onExpenseToggle(isExpense);
     });
   }
 
@@ -38,49 +41,46 @@ class _CategorySelectorState extends State<CategorySelector> {
   Widget build(BuildContext context) {
     return Column(
       children: <Widget>[
-        // 支出和收入切換按鈕
+        // 支出和收入切换按钮
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            // 支出按鈕
+            // 支出按钮
             ElevatedButton(
-              onPressed: () => _onCategorySelected('支出'), // 按鈕被按下時的回調函數
+              onPressed: () => _toggleExpense(true), // 切换到支出
               style: ElevatedButton.styleFrom(
-                backgroundColor: _isExpense
-                    ? Colors.grey[700]
-                    : Colors.white, // 根據 _isExpense 設置按鈕顏色
+                backgroundColor: _isExpense ? Colors.blue : Colors.grey,
                 foregroundColor: _isExpense ? Colors.white : Colors.black,
-                side: BorderSide(color: Colors.black),
-                elevation: 5,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20.0),
+                ),
               ),
-              child: Text('支出'), // 按鈕標題
+              child: Text('支出'), // 按钮标题
             ),
-            SizedBox(width: 10), // 按鈕之間的間距
-            // 收入按鈕
+            SizedBox(width: 10), // 按钮之间的间距
+            // 收入按钮
             ElevatedButton(
-              onPressed: () => _onCategorySelected('收入'), // 按鈕被按下時的回調函數
+              onPressed: () => _toggleExpense(false), // 切换到收入
               style: ElevatedButton.styleFrom(
-                backgroundColor: !_isExpense
-                    ? Colors.grey[700]
-                    : Colors.white, // 根據 _isExpense 設置按鈕顏色
+                backgroundColor: !_isExpense ? Colors.blue : Colors.grey,
                 foregroundColor: !_isExpense ? Colors.white : Colors.black,
-                side: BorderSide(color: Colors.black),
-                elevation: 5,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20.0),
+                ),
               ),
-              child: Text('收入'), // 按鈕標題
+              child: Text('收入'), // 按钮标题
             ),
           ],
         ),
-        // 類別選擇器
+        // 类别选择器
         Wrap(
-          alignment: WrapAlignment.center, // 將所有子元素居中對齊
+          alignment: WrapAlignment.center, // 将所有子元素居中对齐
           children: widget.categories
               .map((categoryData) => Padding(
-                    padding: const EdgeInsets.all(8.0), // 子元素之間的間距
+                    padding: const EdgeInsets.all(8.0), // 子元素之间的间距
                     child: TargetSelection(
                       category: categoryData['category'],
                       icon: categoryData['icon'],
-                      budget: categoryData['budget'],
                       selectedCategory: widget.selectedCategory,
                       onCategorySelected: widget.onCategorySelected,
                     ),

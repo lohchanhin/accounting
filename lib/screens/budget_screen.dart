@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/database_service.dart';
 import '../models/budget_category.dart';
+import '../models/budget.dart';
 
 class BudgetScreen extends StatefulWidget {
   const BudgetScreen({super.key});
@@ -10,22 +11,23 @@ class BudgetScreen extends StatefulWidget {
 }
 
 class _BudgetScreenState extends State<BudgetScreen> {
-  final DatabaseService _dbService = DatabaseService(); // 初始化數據庫服務
+  final DatabaseService _dbService = DatabaseService(); // 初始化数据库服务
   final TextEditingController _nameController =
-      TextEditingController(); // 控制名稱輸入的控制器
-  final TextEditingController _budgetController =
-      TextEditingController(); // 控制預算輸入的控制器
-  bool _isExpense = true; // 用於標識當前選擇的類別是否為支出
-  IconData _selectedIcon = Icons.category; // 當前選擇的圖標
-  List<BudgetCategory> _categories = []; // 預算類別列表
+      TextEditingController(); // 控制名称输入的控制器
+  bool _isExpense = true; // 用于标识当前选择的类别是否为支出
+  IconData _selectedIcon = Icons.category; // 当前选择的图标
+  List<BudgetCategory> _categories = []; // 预算类别列表
+  DateTime _selectedMonth = DateTime.now(); // 当前选择的月份
 
   @override
   void initState() {
     super.initState();
-    _loadCategories(); // 加載預算類別
+    _selectedMonth =
+        DateTime(_selectedMonth.year, _selectedMonth.month, 1); // 设置为当月的第一天
+    _loadCategories(); // 加载预算类别
   }
 
-  // 從數據庫加載預算類別
+  // 从数据库加载预算类别
   Future<void> _loadCategories() async {
     List<BudgetCategory> categories =
         await _dbService.getBudgetCategories(_isExpense);
@@ -34,44 +36,122 @@ class _BudgetScreenState extends State<BudgetScreen> {
     });
   }
 
-  // 添加新類別到數據庫
+  // 添加新类别到数据库
   Future<void> _addCategory() async {
     BudgetCategory newCategory = BudgetCategory(
       name: _nameController.text,
       icon: _selectedIcon,
-      budget: double.tryParse(_budgetController.text),
       isExpense: _isExpense,
     );
     await _dbService.addBudgetCategory(newCategory);
     _loadCategories(); // 更新列表
     setState(() {
       _nameController.clear();
-      _budgetController.clear();
       _selectedIcon = Icons.category;
     });
   }
 
-  // 當選擇圖標時更新狀態
+  // 当选择图标时更新状态
   void _onIconSelected(IconData icon) {
     setState(() {
       _selectedIcon = icon;
     });
   }
 
+  // 切换月份
+  void _onMonthChanged(DateTime newMonth) {
+    setState(() {
+      _selectedMonth = DateTime(newMonth.year, newMonth.month, 1); // 设置为当月的第一天
+    });
+    // 根据新月份更新预算或消费数据
+  }
+
+  // 显示月份选择器
+  void _showMonthPicker(BuildContext context) {
+    showDatePicker(
+      context: context,
+      initialDate: _selectedMonth,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      selectableDayPredicate: (DateTime val) => val.day == 1,
+    ).then((pickedDate) {
+      if (pickedDate != null && pickedDate != _selectedMonth) {
+        _onMonthChanged(pickedDate);
+      }
+    });
+  }
+
+  // 显示修改预算的对话框
+  void _showEditBudgetDialog(BudgetCategory category) async {
+    final TextEditingController _editBudgetController = TextEditingController();
+    double monthlySpending =
+        await _dbService.getMonthlySpending(category.name, _selectedMonth);
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('修改预算 - ${category.name}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _editBudgetController,
+                decoration: InputDecoration(labelText: '每月预算'),
+                keyboardType: TextInputType.number,
+              ),
+              SizedBox(height: 10),
+              Text('本月已花费: \$${monthlySpending.toStringAsFixed(2)}'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('取消'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                double? newBudget = double.tryParse(_editBudgetController.text);
+                if (newBudget != null) {
+                  Budget updatedBudget = Budget(
+                    id: '',
+                    category: category.name,
+                    amount: newBudget,
+                    spent: monthlySpending,
+                    date: _selectedMonth,
+                  );
+                  await _dbService.addBudget(updatedBudget);
+                  _loadCategories(); // 更新类别列表
+                  Navigator.of(context).pop();
+                }
+              },
+              child: Text('保存'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('預算與類別管理'), // 應用標題
+        title: const Text('预算与类别管理'), // 应用标题
+        actions: [
+          IconButton(
+            icon: Icon(Icons.calendar_today),
+            onPressed: () => _showMonthPicker(context), // 显示月份选择器
+          ),
+        ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0), // 增加整體邊距
+        padding: const EdgeInsets.all(16.0), // 增加整体边距
         child: Column(
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // 支出按鈕
+                // 支出按钮
                 ElevatedButton(
                   onPressed: () {
                     setState(() {
@@ -82,7 +162,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _isExpense ? Colors.blue : Colors.grey,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20.0), // 圓角設計
+                      borderRadius: BorderRadius.circular(20.0), // 圆角设计
                     ),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 30,
@@ -99,7 +179,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   ),
                 ),
                 SizedBox(width: 20),
-                // 收入按鈕
+                // 收入按钮
                 ElevatedButton(
                   onPressed: () {
                     setState(() {
@@ -110,7 +190,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: !_isExpense ? Colors.blue : Colors.grey,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20.0), // 圓角設計
+                      borderRadius: BorderRadius.circular(20.0), // 圆角设计
                     ),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 30,
@@ -128,32 +208,20 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 ),
               ],
             ),
-            // 類別名稱輸入框
+            // 类别名称输入框
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: TextField(
                 controller: _nameController,
                 decoration: InputDecoration(
-                  labelText: '類別名稱',
-                  border: OutlineInputBorder(), // 方框邊界
+                  labelText: '类别名称',
+                  border: OutlineInputBorder(), // 方框边界
                 ),
               ),
             ),
-            // 每月預算輸入框
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: TextField(
-                controller: _budgetController,
-                decoration: InputDecoration(
-                  labelText: '每月預算',
-                  border: OutlineInputBorder(), // 方框邊界
-                ),
-                keyboardType: TextInputType.number,
-              ),
-            ),
-            // 圖標選擇按鈕
+            // 图标选择按钮
             IconButton(
-              icon: Icon(_selectedIcon, size: 40), // 調整圖標大小
+              icon: Icon(_selectedIcon, size: 40), // 调整图标大小
               onPressed: () async {
                 IconData? icon = await showDialog<IconData>(
                   context: context,
@@ -166,12 +234,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 }
               },
             ),
-            // 添加類別按鈕
+            // 添加类别按钮
             ElevatedButton(
               onPressed: _addCategory,
               style: ElevatedButton.styleFrom(
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20.0), // 圓角設計
+                  borderRadius: BorderRadius.circular(20.0), // 圆角设计
                 ),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 50,
@@ -179,7 +247,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 ),
               ),
               child: Text(
-                '添加類別',
+                '添加类别',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -187,7 +255,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               ),
             ),
             SizedBox(height: 20),
-            // 顯示預算類別列表
+            // 显示预算类别列表
             Expanded(
               child: ListView.builder(
                 itemCount: _categories.length,
@@ -208,15 +276,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      trailing: Text(
-                        category.budget != null
-                            ? '\$${category.budget!.toStringAsFixed(2)}'
-                            : 'No budget',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[700],
-                        ),
-                      ),
+                      trailing: Icon(Icons.edit),
+                      onTap: () {
+                        _showEditBudgetDialog(category); // 实现查看和修改预算的功能
+                      },
                     ),
                   );
                 },
@@ -230,7 +293,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
 }
 
 class IconPickerDialog extends StatefulWidget {
-  final Function(IconData) onIconSelected; // 當選擇圖標時的回調函數
+  final Function(IconData) onIconSelected; // 当选择图标时的回调函数
 
   IconPickerDialog({required this.onIconSelected});
 
@@ -239,7 +302,7 @@ class IconPickerDialog extends StatefulWidget {
 }
 
 class _IconPickerDialogState extends State<IconPickerDialog> {
-  // 定義一組常用的圖標
+  // 定义一组常用的图标
   final List<IconData> _icons = [
     Icons.category,
     Icons.food_bank,
@@ -257,7 +320,7 @@ class _IconPickerDialogState extends State<IconPickerDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('選擇圖標'),
+      title: Text('选择图标'),
       content: Container(
         width: double.maxFinite,
         child: GridView.builder(
@@ -271,10 +334,10 @@ class _IconPickerDialogState extends State<IconPickerDialog> {
           itemBuilder: (context, index) {
             IconData icon = _icons[index];
             return IconButton(
-              icon: Icon(icon, size: 30), // 調整圖標大小
+              icon: Icon(icon, size: 30), // 调整图标大小
               onPressed: () {
-                widget.onIconSelected(icon); // 當選擇圖標時觸發回調函數
-                Navigator.of(context).pop(icon); // 關閉對話框
+                widget.onIconSelected(icon); // 当选择图标时触发回调函数
+                Navigator.of(context).pop(icon); // 关闭对话框
               },
             );
           },

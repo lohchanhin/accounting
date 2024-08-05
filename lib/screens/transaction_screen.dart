@@ -8,6 +8,7 @@ import '../models/transaction.dart' as trans;
 import '../widgets/category_selector.dart';
 import '../widgets/numeric_input.dart';
 import '../services/database_service.dart';
+import '../models/budget_category.dart';
 
 class TransactionScreen extends StatefulWidget {
   const TransactionScreen({super.key});
@@ -17,21 +18,23 @@ class TransactionScreen extends StatefulWidget {
 }
 
 class _TransactionScreenState extends State<TransactionScreen> {
-  final DatabaseService _dbService = DatabaseService();
-  final TextEditingController _noteController = TextEditingController();
-  String _selectedCategory = '';
-  bool _isExpense = true;
-  double _amount = 0.0;
-  List<Budget> _budgets = [];
-  List<Map<String, dynamic>> _categories = [];
+  final DatabaseService _dbService = DatabaseService(); // 初始化数据库服务
+  final TextEditingController _noteController =
+      TextEditingController(); // 备注控制器
+  String _selectedCategory = ''; // 当前选中的类别
+  bool _isExpense = true; // 用于标识当前选择的类别是否为支出
+  double _amount = 0.0; // 交易金额
+  List<Budget> _budgets = []; // 预算列表
+  List<Map<String, dynamic>> _categories = []; // 类别列表
 
   @override
   void initState() {
     super.initState();
-    _loadBudgets();
-    _loadCategories();
+    _loadBudgets(); // 加载预算
+    _loadCategories(); // 加载类别
   }
 
+  // 从数据库加载预算
   Future<void> _loadBudgets() async {
     List<Budget> budgets = await _dbService.getBudgets();
     setState(() {
@@ -39,23 +42,22 @@ class _TransactionScreenState extends State<TransactionScreen> {
     });
   }
 
+  // 从数据库加载类别
   Future<void> _loadCategories() async {
-    List<String> categories = await _dbService.getCategories(_isExpense);
+    List<BudgetCategory> categories =
+        await _dbService.getBudgetCategories(_isExpense);
     setState(() {
       _categories = categories.map((category) {
         return {
-          'category': category,
-          'icon': Icons.category, // 假設有個預設圖標
-          'budget': _budgets
-              .firstWhere((b) => b.category == category,
-                  orElse: () => Budget(id: '', category: category))
-              .amount,
+          'category': category.name,
+          'icon': category.icon,
         };
       }).toList();
       _selectedCategory = '';
     });
   }
 
+  // 添加新的交易
   void _addTransaction() async {
     trans.Transaction newTransaction = trans.Transaction(
       id: '',
@@ -66,7 +68,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
     );
 
     await _dbService.addTransaction(newTransaction);
-    _loadBudgets(); // 更新預算
+    _loadBudgets(); // 更新预算
 
     setState(() {
       _noteController.clear();
@@ -74,14 +76,22 @@ class _TransactionScreenState extends State<TransactionScreen> {
     });
   }
 
+  // 当选择支出或收入时更新类别
   void _onCategorySelected(String category) {
     setState(() {
-      _isExpense = category == '支出';
-      _selectedCategory = '';
+      _selectedCategory = category;
+    });
+  }
+
+  // 切换收入或支出并更新类别
+  void _toggleExpense(bool isExpense) {
+    setState(() {
+      _isExpense = isExpense;
       _loadCategories();
     });
   }
 
+  // 导航到指定页面
   void _navigateTo(BuildContext context, Widget screen) {
     Navigator.push(
       context,
@@ -89,6 +99,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
     );
   }
 
+  // 构建侧边菜单
   Widget _buildSideMenu() {
     return Drawer(
       child: ListView(
@@ -132,34 +143,55 @@ class _TransactionScreenState extends State<TransactionScreen> {
         title: const Text('Transactions'),
       ),
       drawer: _buildSideMenu(),
-      body: Column(
-        children: <Widget>[
-          Expanded(
-            child: CategorySelector(
-              categories: _categories,
-              selectedCategory: _selectedCategory,
-              onCategorySelected: (category) {
-                setState(() {
-                  _selectedCategory = category;
-                });
-              },
-              isExpense: _isExpense,
+      body: Padding(
+        padding: const EdgeInsets.all(16.0), // 增加整体边距
+        child: Column(
+          children: <Widget>[
+            // 类别选择器
+            Expanded(
+              child: Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15.0),
+                ),
+                elevation: 5,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: CategorySelector(
+                    categories: _categories,
+                    selectedCategory: _selectedCategory,
+                    onCategorySelected: _onCategorySelected,
+                    isExpense: _isExpense,
+                    onExpenseToggle: _toggleExpense, // 添加切换收入支出的回调函数
+                  ),
+                ),
+              ),
+              flex: 1,
             ),
-            flex: 1,
-          ),
-          Expanded(
-            child: NumericInput(
-              onValueChanged: (value) {
-                setState(() {
-                  _amount = value;
-                });
-              },
-              noteController: _noteController,
-              onAddTransaction: _addTransaction,
+            SizedBox(height: 10),
+            // 数字输入区域
+            Expanded(
+              child: Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15.0),
+                ),
+                elevation: 5,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: NumericInput(
+                    onValueChanged: (value) {
+                      setState(() {
+                        _amount = value;
+                      });
+                    },
+                    noteController: _noteController,
+                    onAddTransaction: _addTransaction,
+                  ),
+                ),
+              ),
+              flex: 1,
             ),
-            flex: 1,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
