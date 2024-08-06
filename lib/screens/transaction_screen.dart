@@ -1,12 +1,13 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 import 'budget_screen.dart';
 import 'report_screen.dart';
 import 'settings_screen.dart';
 import '../models/budget.dart';
 import '../models/transaction.dart' as trans;
 import '../widgets/category_selector.dart';
-import '../widgets/numeric_input.dart';
 import '../services/database_service.dart';
 import '../models/budget_category.dart';
 
@@ -19,13 +20,18 @@ class TransactionScreen extends StatefulWidget {
 
 class _TransactionScreenState extends State<TransactionScreen> {
   final DatabaseService _dbService = DatabaseService(); // 初始化数据库服务
+  final FirebaseFirestore _db = FirebaseFirestore.instance; // 初始化 Firestore
+
   final TextEditingController _noteController =
       TextEditingController(); // 备注控制器
+  final TextEditingController _amountController =
+      TextEditingController(); // 金额控制器
   String _selectedCategory = ''; // 当前选中的类别
   bool _isExpense = true; // 用于标识当前选择的类别是否为支出
   double _amount = 0.0; // 交易金额
   List<Budget> _budgets = []; // 预算列表
   List<Map<String, dynamic>> _categories = []; // 类别列表
+  String? _receiptUrl; // 存储发票图片的URL
 
   @override
   void initState() {
@@ -45,7 +51,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   // 从数据库加载类别
   Future<void> _loadCategories() async {
     List<BudgetCategory> categories =
-        await _dbService.getBudgetCategories(_isExpense);
+        await _dbService.getCategories(_isExpense);
     setState(() {
       _categories = categories.map((category) {
         return {
@@ -57,23 +63,68 @@ class _TransactionScreenState extends State<TransactionScreen> {
     });
   }
 
-  // 添加新的交易
-  void _addTransaction() async {
+  // 添加新的交易并更新预算
+  Future<void> _addTransaction(
+      String category, double amount, String note) async {
     trans.Transaction newTransaction = trans.Transaction(
       id: '',
-      category: _selectedCategory,
-      amount: _amount,
+      category: category,
+      amount: amount,
       date: DateTime.now(),
-      note: _noteController.text,
+      note: note,
+      isExpense: _isExpense,
+      receiptUrl: _receiptUrl,
     );
 
     await _dbService.addTransaction(newTransaction);
-    _loadBudgets(); // 更新预算
-
+    await _updateBudget(newTransaction); // 更新预算
+    await _loadBudgets(); // 更新预算列表
     setState(() {
       _noteController.clear();
+      _amountController.clear();
       _amount = 0.0;
     });
+
+    // 弹出提示框
+    _showConfirmationDialog();
+  }
+
+  // 更新预算
+  Future<void> _updateBudget(trans.Transaction transaction) async {
+    QuerySnapshot budgetSnapshot = await _db
+        .collection('budgets')
+        .where('category', isEqualTo: transaction.category)
+        .get();
+
+    if (budgetSnapshot.docs.isNotEmpty) {
+      DocumentSnapshot budgetDoc = budgetSnapshot.docs.first;
+      double newSpent = (budgetDoc['spent'] ?? 0.0) + transaction.amount;
+      await _db.collection('budgets').doc(budgetDoc.id).update({
+        'spent': newSpent,
+      });
+    }
+  }
+
+  // 显示确认对话框
+  void _showConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('交易已添加'),
+          content: Text('您的交易记录已成功添加。'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _loadCategories(); // 确认后刷新类别UI
+              },
+              child: Text('确认'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // 当选择支出或收入时更新类别
@@ -81,6 +132,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
     setState(() {
       _selectedCategory = category;
     });
+    _showInputDialog(); // 显示输入对话框
   }
 
   // 切换收入或支出并更新类别
@@ -136,59 +188,93 @@ class _TransactionScreenState extends State<TransactionScreen> {
     );
   }
 
+  // 显示输入对话框
+  void _showInputDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('输入交易信息'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _noteController,
+                decoration: InputDecoration(
+                  labelText: '备注',
+                ),
+              ),
+              TextField(
+                controller: _amountController,
+                decoration: InputDecoration(
+                  labelText: '金额',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              ElevatedButton(
+                onPressed: _pickReceiptImage,
+                child: Text('上传发票'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('取消'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                double amount = double.tryParse(_amountController.text) ?? 0.0;
+                _addTransaction(
+                    _selectedCategory, amount, _noteController.text);
+                Navigator.of(context).pop();
+              },
+              child: Text('确认'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 选择发票图片
+  Future<void> _pickReceiptImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      setState(() {
+        _receiptUrl = pickedFile.path;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Transactions'),
+        title: const Text('记账'),
       ),
       drawer: _buildSideMenu(),
       body: Padding(
-        padding: const EdgeInsets.all(16.0), // 增加整体边距
+        padding: const EdgeInsets.all(0.0), // 增加整体边距
         child: Column(
           children: <Widget>[
             // 类别选择器
-            Expanded(
-              child: Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15.0),
-                ),
-                elevation: 5,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: CategorySelector(
-                    categories: _categories,
-                    selectedCategory: _selectedCategory,
-                    onCategorySelected: _onCategorySelected,
-                    isExpense: _isExpense,
-                    onExpenseToggle: _toggleExpense, // 添加切换收入支出的回调函数
-                  ),
+            Flexible(
+              flex: 1,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: CategorySelector(
+                  categories: _categories,
+                  selectedCategory: _selectedCategory,
+                  onCategorySelected: _onCategorySelected,
+                  isExpense: _isExpense,
+                  onExpenseToggle: _toggleExpense, // 添加切换收入支出的回调函数
                 ),
               ),
-              flex: 1,
-            ),
-            SizedBox(height: 10),
-            // 数字输入区域
-            Expanded(
-              child: Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15.0),
-                ),
-                elevation: 5,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: NumericInput(
-                    onValueChanged: (value) {
-                      setState(() {
-                        _amount = value;
-                      });
-                    },
-                    noteController: _noteController,
-                    onAddTransaction: _addTransaction,
-                  ),
-                ),
-              ),
-              flex: 1,
             ),
           ],
         ),

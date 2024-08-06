@@ -30,7 +30,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
   // 从数据库加载预算类别
   Future<void> _loadCategories() async {
     List<BudgetCategory> categories =
-        await _dbService.getBudgetCategories(_isExpense);
+        await _dbService.getCategories(_isExpense);
     setState(() {
       _categories = categories;
     });
@@ -38,6 +38,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
   // 添加新类别到数据库
   Future<void> _addCategory() async {
+    if (_nameController.text.isEmpty) return;
     BudgetCategory newCategory = BudgetCategory(
       name: _nameController.text,
       icon: _selectedIcon,
@@ -115,9 +116,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   Budget updatedBudget = Budget(
                     id: '',
                     category: category.name,
+                    monthYear: _selectedMonth,
                     amount: newBudget,
                     spent: monthlySpending,
-                    date: _selectedMonth,
                   );
                   await _dbService.addBudget(updatedBudget);
                   _loadCategories(); // 更新类别列表
@@ -165,9 +166,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       borderRadius: BorderRadius.circular(20.0), // 圆角设计
                     ),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 30,
-                      vertical: 10,
-                    ),
+                        horizontal: 30, vertical: 10),
                   ),
                   child: Text(
                     '支出',
@@ -193,9 +192,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       borderRadius: BorderRadius.circular(20.0), // 圆角设计
                     ),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 30,
-                      vertical: 10,
-                    ),
+                        horizontal: 30, vertical: 10),
                   ),
                   child: Text(
                     '收入',
@@ -241,17 +238,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20.0), // 圆角设计
                 ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 50,
-                  vertical: 15,
-                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
               ),
               child: Text(
                 '添加类别',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
             SizedBox(height: 20),
@@ -272,9 +264,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       title: Text(
                         category.name,
                         style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                            fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       trailing: Icon(Icons.edit),
                       onTap: () {

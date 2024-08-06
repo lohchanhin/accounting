@@ -1,14 +1,14 @@
 class Budget {
-  final String id;
+  final String? id;
   final String category;
   final double? amount; // 可选的预算金额
   final double spent;
-  final DateTime date; // 新增日期字段
+  final DateTime monthYear; // 用於標識預算屬於哪一個月份
 
   Budget({
-    required this.id,
+    this.id,
     required this.category,
-    required this.date,
+    required this.monthYear,
     this.amount,
     this.spent = 0,
   });

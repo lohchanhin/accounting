@@ -1,4 +1,3 @@
-// category_selector.dart
 import 'package:flutter/material.dart';
 import 'target_selection.dart';
 
@@ -74,11 +73,12 @@ class _CategorySelectorState extends State<CategorySelector> {
         ),
         // 类别选择器
         Wrap(
-          alignment: WrapAlignment.center, // 将所有子元素居中对齐
+          alignment: WrapAlignment.start, // 将所有子元素居中对齐
           children: widget.categories
               .map((categoryData) => Padding(
                     padding: const EdgeInsets.all(8.0), // 子元素之间的间距
                     child: TargetSelection(
+                      selectedMonth: DateTime.now(),
                       category: categoryData['category'],
                       icon: categoryData['icon'],
                       selectedCategory: widget.selectedCategory,

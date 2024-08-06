@@ -13,7 +13,7 @@ class DatabaseService {
       'category': budget.category,
       'amount': budget.amount,
       'spent': budget.spent,
-      'date': budget.date,
+      'date': budget.monthYear,
     });
   }
 
@@ -23,7 +23,7 @@ class DatabaseService {
       'category': budget.category,
       'amount': budget.amount,
       'spent': budget.spent,
-      'date': budget.date,
+      'date': budget.monthYear,
     });
   }
 
@@ -36,7 +36,7 @@ class DatabaseService {
         category: doc['category'],
         amount: doc['amount'],
         spent: doc['spent'],
-        date: (doc['date'] as Timestamp).toDate(),
+        monthYear: (doc['date'] as Timestamp).toDate(),
       );
     }).toList();
   }
@@ -49,6 +49,7 @@ class DatabaseService {
       'date': transaction.date,
       'note': transaction.note,
       'receiptUrl': transaction.receiptUrl,
+      'isExpense': transaction.isExpense,
     });
 
     // 更新预算的花费金额
@@ -65,6 +66,39 @@ class DatabaseService {
     }
   }
 
+  // 更新已有的交易记录
+  Future<void> updateTransaction(trans.Transaction transaction) async {
+    await _db.collection('transactions').doc(transaction.id).update({
+      'category': transaction.category,
+      'amount': transaction.amount,
+      'date': transaction.date,
+      'note': transaction.note,
+      'receiptUrl': transaction.receiptUrl,
+      'isExpense': transaction.isExpense,
+    });
+  }
+
+  // 删除交易记录
+  Future<void> deleteTransaction(String transactionId) async {
+    await _db.collection('transactions').doc(transactionId).delete();
+  }
+
+  // 获取所有的交易记录
+  Future<List<trans.Transaction>> getTransactions() async {
+    QuerySnapshot snapshot = await _db.collection('transactions').get();
+    return snapshot.docs.map((doc) {
+      return trans.Transaction(
+        id: doc.id,
+        category: doc['category'],
+        amount: doc['amount'],
+        date: (doc['date'] as Timestamp).toDate(),
+        note: doc['note'],
+        receiptUrl: doc['receiptUrl'],
+        isExpense: doc['isExpense'],
+      );
+    }).toList();
+  }
+
   // 获取指定类型的所有类别（支出或收入）
   Future<List<BudgetCategory>> getCategories(bool isExpense) async {
     QuerySnapshot snapshot = await _db
@@ -73,6 +107,7 @@ class DatabaseService {
         .get();
     return snapshot.docs.map((doc) {
       return BudgetCategory(
+        id: doc.id,
         name: doc['name'],
         icon: IconData(doc['icon'], fontFamily: 'MaterialIcons'),
         isExpense: doc['isExpense'],
@@ -85,23 +120,22 @@ class DatabaseService {
     await _db.collection('budgetCategories').add({
       'name': category.name,
       'icon': category.icon.codePoint,
-      'isExpense': category.isExpense, // 确保在添加时也存储支出或收入的标志
+      'isExpense': category.isExpense,
     });
   }
 
-  // 获取指定类型的所有预算类别（支出或收入）
-  Future<List<BudgetCategory>> getBudgetCategories(bool isExpense) async {
-    QuerySnapshot snapshot = await _db
-        .collection('budgetCategories')
-        .where('isExpense', isEqualTo: isExpense)
-        .get();
-    return snapshot.docs.map((doc) {
-      return BudgetCategory(
-        name: doc['name'],
-        icon: IconData(doc['icon'], fontFamily: 'MaterialIcons'),
-        isExpense: doc['isExpense'],
-      );
-    }).toList();
+  // 更新已有的预算类别记录
+  Future<void> updateBudgetCategory(BudgetCategory category) async {
+    await _db.collection('budgetCategories').doc(category.id).update({
+      'name': category.name,
+      'icon': category.icon.codePoint,
+      'isExpense': category.isExpense,
+    });
+  }
+
+  // 删除预算类别记录
+  Future<void> deleteBudgetCategory(String categoryId) async {
+    await _db.collection('budgetCategories').doc(categoryId).delete();
   }
 
   // 获取指定类别在指定月份的消费总额
@@ -122,24 +156,6 @@ class DatabaseService {
     return totalSpending;
   }
 
-  // 更新已有的预算类别记录
-  Future<void> updateBudgetCategory(BudgetCategory category) async {
-    QuerySnapshot snapshot = await _db
-        .collection('budgetCategories')
-        .where('name', isEqualTo: category.name)
-        .get();
-
-    if (snapshot.docs.isNotEmpty) {
-      await _db
-          .collection('budgetCategories')
-          .doc(snapshot.docs.first.id)
-          .update({
-        'icon': category.icon.codePoint,
-        'isExpense': category.isExpense,
-      });
-    }
-  }
-
   // 获取某个月份的预算
   Future<List<Budget>> getBudgetsForMonth(DateTime month) async {
     DateTime startDate = DateTime(month.year, month.month, 1);
@@ -155,8 +171,29 @@ class DatabaseService {
         category: doc['category'],
         amount: doc['amount'],
         spent: doc['spent'],
-        date: (doc['date'] as Timestamp).toDate(),
+        monthYear: (doc['date'] as Timestamp).toDate(),
       );
     }).toList();
+  }
+
+  // 获取指定类别在指定月份的剩余预算
+  Future<double> getRemainingBudget(String category, DateTime month) async {
+    DateTime startDate = DateTime(month.year, month.month, 1);
+    DateTime endDate = DateTime(month.year, month.month + 1, 1);
+    QuerySnapshot snapshot = await _db
+        .collection('budgets')
+        .where('category', isEqualTo: category)
+        .where('date', isGreaterThanOrEqualTo: startDate)
+        .where('date', isLessThan: endDate)
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      var budget = snapshot.docs.first;
+      double amount = budget['amount'] ?? 0.0;
+      double spent = budget['spent'] ?? 0.0;
+      return amount - spent;
+    } else {
+      return 0.0;
+    }
   }
 }
