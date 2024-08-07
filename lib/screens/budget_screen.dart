@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/database_service.dart';
 import '../models/budget_category.dart';
+import '../screens/categoryDetailScreen.dart';
 import '../models/budget.dart';
 
 class BudgetScreen extends StatefulWidget {
@@ -133,6 +134,20 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
+  // 跳转到类别详细页面
+  void _navigateToCategoryDetail(BudgetCategory category) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CategoryDetailScreen(
+          isExpense: category.isExpense,
+          category: category.name,
+          month: _selectedMonth,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -249,8 +264,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
             SizedBox(height: 20),
             // 显示预算类别列表
             Expanded(
-              child: ListView.builder(
+              child: GridView.builder(
                 itemCount: _categories.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 1,
+                  mainAxisSpacing: 1.0,
+                  crossAxisSpacing: 1.0,
+                  childAspectRatio: 4 / 1,
+                ),
                 itemBuilder: (context, index) {
                   BudgetCategory category = _categories[index];
                   return Card(
@@ -266,9 +287,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
                         style: TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-                      trailing: Icon(Icons.edit),
+                      trailing: Icon(Icons.arrow_forward),
                       onTap: () {
-                        _showEditBudgetDialog(category); // 实现查看和修改预算的功能
+                        _navigateToCategoryDetail(category); // 跳转到类别详细页面
                       },
                     ),
                   );

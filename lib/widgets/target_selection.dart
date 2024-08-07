@@ -7,6 +7,7 @@ class TargetSelection extends StatefulWidget {
   final String selectedCategory;
   final Function(String) onCategorySelected;
   final DateTime selectedMonth;
+  final bool isExpense; // 新增字段标记类别是收入还是支出
 
   const TargetSelection({
     Key? key,
@@ -15,6 +16,7 @@ class TargetSelection extends StatefulWidget {
     required this.selectedCategory,
     required this.onCategorySelected,
     required this.selectedMonth,
+    required this.isExpense, // 初始化字段
   }) : super(key: key);
 
   @override
@@ -22,28 +24,41 @@ class TargetSelection extends StatefulWidget {
 }
 
 class _TargetSelectionState extends State<TargetSelection> {
-  double? remainingBudget;
+  double amount = 0; // 用于显示剩余预算或总收入
 
   @override
   void initState() {
     super.initState();
-    _loadRemainingBudget();
+    _loadAmount();
   }
 
-  Future<void> _loadRemainingBudget() async {
+  Future<void> _loadAmount() async {
+    print('更新图表金额');
     DatabaseService dbService = DatabaseService();
-    double budget = await dbService.getRemainingBudget(
-        widget.category, widget.selectedMonth);
-    setState(() {
-      remainingBudget = budget;
-    });
+    if (widget.isExpense) {
+      double budget = await dbService.getRemainingBudget(
+          widget.category, widget.selectedMonth);
+      if (mounted) {
+        setState(() {
+          amount = budget;
+        });
+      }
+    } else {
+      double income =
+          await dbService.getTotalIncome(widget.category, widget.selectedMonth);
+      if (mounted) {
+        setState(() {
+          amount = income;
+        });
+      }
+    }
   }
 
   @override
   void didUpdateWidget(TargetSelection oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.selectedCategory != widget.selectedCategory) {
-      _loadRemainingBudget();
+      _loadAmount();
     }
   }
 
@@ -79,14 +94,15 @@ class _TargetSelectionState extends State<TargetSelection> {
                     : Colors.black,
               ),
             ),
-            if (remainingBudget != null) ...[
+            ...[
               SizedBox(height: 4),
               Text(
-                '预算: \$${remainingBudget!.toStringAsFixed(2)}', // 显示剩余预算
+                '\$${amount.toStringAsFixed(2)}', // 显示剩余预算或总收入
                 style: TextStyle(
                   color: widget.selectedCategory == widget.category
                       ? Colors.white
                       : Colors.black,
+                  fontSize: 12,
                 ),
               ),
             ],

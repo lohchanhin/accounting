@@ -32,6 +32,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   List<Budget> _budgets = []; // 预算列表
   List<Map<String, dynamic>> _categories = []; // 类别列表
   String? _receiptUrl; // 存储发票图片的URL
+  double _totalIncome = 0.0; // 存储特定类别的总收入
 
   @override
   void initState() {
@@ -63,6 +64,15 @@ class _TransactionScreenState extends State<TransactionScreen> {
     });
   }
 
+  // 从数据库加载特定类别的总收入
+  Future<void> _loadIncome(String category) async {
+    double totalIncome =
+        await _dbService.getTotalIncome(category, DateTime.now());
+    setState(() {
+      _totalIncome = totalIncome;
+    });
+  }
+
   // 添加新的交易并更新预算
   Future<void> _addTransaction(
       String category, double amount, String note) async {
@@ -77,8 +87,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
     );
 
     await _dbService.addTransaction(newTransaction);
-    await _updateBudget(newTransaction); // 更新预算
-    await _loadBudgets(); // 更新预算列表
     setState(() {
       _noteController.clear();
       _amountController.clear();
@@ -87,22 +95,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
     // 弹出提示框
     _showConfirmationDialog();
-  }
-
-  // 更新预算
-  Future<void> _updateBudget(trans.Transaction transaction) async {
-    QuerySnapshot budgetSnapshot = await _db
-        .collection('budgets')
-        .where('category', isEqualTo: transaction.category)
-        .get();
-
-    if (budgetSnapshot.docs.isNotEmpty) {
-      DocumentSnapshot budgetDoc = budgetSnapshot.docs.first;
-      double newSpent = (budgetDoc['spent'] ?? 0.0) + transaction.amount;
-      await _db.collection('budgets').doc(budgetDoc.id).update({
-        'spent': newSpent,
-      });
-    }
   }
 
   // 显示确认对话框
@@ -132,14 +124,21 @@ class _TransactionScreenState extends State<TransactionScreen> {
     setState(() {
       _selectedCategory = category;
     });
+    if (!_isExpense) {
+      _loadIncome(category); // 加载特定类别的总收入
+    }
     _showInputDialog(); // 显示输入对话框
   }
 
-  // 切换收入或支出并更新类别
+  // 切换收入或支出并更新类别和预算
   void _toggleExpense(bool isExpense) {
     setState(() {
       _isExpense = isExpense;
       _loadCategories();
+      _loadBudgets(); // 切换支出或收入时加载预算
+      if (!isExpense && _selectedCategory.isNotEmpty) {
+        _loadIncome(_selectedCategory); // 切换到收入时加载特定类别的总收入
+      }
     });
   }
 

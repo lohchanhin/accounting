@@ -176,24 +176,98 @@ class DatabaseService {
     }).toList();
   }
 
-  // 获取指定类别在指定月份的剩余预算
+// 获取指定类别在指定月份的剩余预算
   Future<double> getRemainingBudget(String category, DateTime month) async {
     DateTime startDate = DateTime(month.year, month.month, 1);
     DateTime endDate = DateTime(month.year, month.month + 1, 1);
-    QuerySnapshot snapshot = await _db
+    QuerySnapshot budgetSnapshot = await _db
         .collection('budgets')
         .where('category', isEqualTo: category)
         .where('date', isGreaterThanOrEqualTo: startDate)
         .where('date', isLessThan: endDate)
         .get();
 
-    if (snapshot.docs.isNotEmpty) {
-      var budget = snapshot.docs.first;
-      double amount = budget['amount'] ?? 0.0;
-      double spent = budget['spent'] ?? 0.0;
-      return amount - spent;
+    double amount = 0.0;
+    double spent = 0.0;
+
+    if (budgetSnapshot.docs.isNotEmpty) {
+      var budget = budgetSnapshot.docs.first;
+      amount = budget['amount'] ?? 0.0;
+      spent = budget['spent'] ?? 0.0;
     } else {
-      return 0.0;
+      // 没有找到预算记录，创建一个新的预算记录
+      await _db.collection('budgets').add({
+        'category': category,
+        'amount': 0.0,
+        'spent': 0.0,
+        'date': startDate,
+      });
     }
+
+    // 获取该类别在指定月份的消费记录
+    QuerySnapshot transactionSnapshot = await _db
+        .collection('transactions')
+        .where('category', isEqualTo: category)
+        .where('date', isGreaterThanOrEqualTo: startDate)
+        .where('date', isLessThan: endDate)
+        .get();
+
+    double totalSpent = transactionSnapshot.docs.fold(0.0, (sum, doc) {
+      return sum + (doc['amount'] ?? 0.0);
+    });
+
+    // 更新预算的花费金额
+    if (budgetSnapshot.docs.isNotEmpty) {
+      var budgetDoc = budgetSnapshot.docs.first;
+      await _db.collection('budgets').doc(budgetDoc.id).update({
+        'spent': totalSpent,
+      });
+    }
+
+    return amount - totalSpent;
+  }
+
+  // 获取某个类别在指定月份的交易记录
+  Future<List<trans.Transaction>> getTransactionsForCategoryAndMonth(
+      String category, DateTime month) async {
+    DateTime startDate = DateTime(month.year, month.month, 1);
+    DateTime endDate = DateTime(month.year, month.month + 1, 1);
+    QuerySnapshot snapshot = await _db
+        .collection('transactions')
+        .where('category', isEqualTo: category)
+        .where('date', isGreaterThanOrEqualTo: startDate)
+        .where('date', isLessThan: endDate)
+        .get();
+
+    return snapshot.docs.map((doc) {
+      return trans.Transaction(
+        id: doc.id,
+        category: doc['category'],
+        amount: doc['amount'],
+        date: (doc['date'] as Timestamp).toDate(),
+        note: doc['note'],
+        receiptUrl: doc['receiptUrl'],
+        isExpense: doc['isExpense'],
+      );
+    }).toList();
+  }
+
+  // 获取指定类别在指定月份的总收入
+  Future<double> getTotalIncome(String category, DateTime month) async {
+    DateTime startDate = DateTime(month.year, month.month, 1);
+    DateTime endDate = DateTime(month.year, month.month + 1, 1);
+    QuerySnapshot snapshot = await _db
+        .collection('transactions')
+        .where('category', isEqualTo: category)
+        .where('isExpense', isEqualTo: false)
+        .where('date', isGreaterThanOrEqualTo: startDate)
+        .where('date', isLessThan: endDate)
+        .get();
+
+    double totalIncome = snapshot.docs.fold(0.0, (sum, doc) {
+      return sum + doc['amount'];
+    });
+
+    return totalIncome;
   }
 }

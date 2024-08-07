@@ -22,6 +22,7 @@ class CategorySelector extends StatefulWidget {
 
 class _CategorySelectorState extends State<CategorySelector> {
   late bool _isExpense;
+  String _uniqueKey = '';
 
   @override
   void initState() {
@@ -33,6 +34,8 @@ class _CategorySelectorState extends State<CategorySelector> {
     setState(() {
       _isExpense = isExpense;
       widget.onExpenseToggle(isExpense);
+      // 生成一个新的唯一键以强制刷新 TargetSelection
+      _uniqueKey = DateTime.now().millisecondsSinceEpoch.toString();
     });
   }
 
@@ -72,20 +75,28 @@ class _CategorySelectorState extends State<CategorySelector> {
           ],
         ),
         // 类别选择器
-        Wrap(
-          alignment: WrapAlignment.start, // 将所有子元素居中对齐
-          children: widget.categories
-              .map((categoryData) => Padding(
-                    padding: const EdgeInsets.all(8.0), // 子元素之间的间距
-                    child: TargetSelection(
-                      selectedMonth: DateTime.now(),
-                      category: categoryData['category'],
-                      icon: categoryData['icon'],
-                      selectedCategory: widget.selectedCategory,
-                      onCategorySelected: widget.onCategorySelected,
-                    ),
-                  ))
-              .toList(),
+        Expanded(
+          child: GridView.builder(
+            padding: const EdgeInsets.all(8.0),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8.0,
+              mainAxisSpacing: 8.0,
+            ),
+            itemCount: widget.categories.length,
+            itemBuilder: (BuildContext context, int index) {
+              var categoryData = widget.categories[index];
+              return TargetSelection(
+                key: ValueKey(_uniqueKey + categoryData['category']),
+                selectedMonth: DateTime.now(),
+                category: categoryData['category'],
+                icon: categoryData['icon'],
+                selectedCategory: widget.selectedCategory,
+                onCategorySelected: widget.onCategorySelected,
+                isExpense: _isExpense,
+              );
+            },
+          ),
         ),
       ],
     );

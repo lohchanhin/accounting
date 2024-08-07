@@ -1,7 +1,7 @@
 class Budget {
   final String? id;
   final String category;
-  final double? amount; // 可选的预算金额
+  double? amount; // 可选的预算金额
   final double spent;
   final DateTime monthYear; // 用於標識預算屬於哪一個月份
 
