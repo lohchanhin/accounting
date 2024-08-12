@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_simple_calculator/flutter_simple_calculator.dart';
 import '../services/database_service.dart';
+import 'package:hive/hive.dart'; // 引入Hive
 
 class NumericInput extends StatefulWidget {
   final Function(double) onValueChanged;
@@ -10,7 +11,7 @@ class NumericInput extends StatefulWidget {
   final String selectedCategory;
   final bool isExpense;
   final VoidCallback onAddTransaction;
-  final double buttonSize; // 新增变量，用于控制按钮大小
+  final double buttonSize; // 控制按钮大小
   final double buttonSpacing; // 按钮间距
   final Color buttonColor; // 按钮颜色
   final Color textColor; // 按钮文字颜色
@@ -33,6 +34,7 @@ class NumericInput extends StatefulWidget {
 
 class _NumericInputState extends State<NumericInput> {
   double? _currentValue = 0;
+  final Box _cacheBox = Hive.box('cacheBox'); // 使用Hive缓存箱
 
   void _updateAmount(double value) {
     setState(() {
@@ -41,7 +43,7 @@ class _NumericInputState extends State<NumericInput> {
     widget.onValueChanged(value);
   }
 
-  void _addTransaction() async {
+  Future<void> _addTransaction() async {
     final newTransaction = Transaction(
       id: '',
       category: widget.selectedCategory,
@@ -50,7 +52,18 @@ class _NumericInputState extends State<NumericInput> {
       note: widget.noteController.text,
       isExpense: widget.isExpense,
     );
+
     await DatabaseService().addTransaction(newTransaction);
+
+    // 清空缓存以便下次获取最新数据
+    _cacheBox.put('transactions', null);
+    _cacheBox.put(
+        'remainingBudget_${widget.selectedCategory}_${DateTime.now().month}_${DateTime.now().year}',
+        null);
+    _cacheBox.put(
+        'totalIncome_${widget.selectedCategory}_${DateTime.now().month}_${DateTime.now().year}',
+        null);
+
     widget.onAddTransaction();
   }
 
@@ -75,7 +88,7 @@ class _NumericInputState extends State<NumericInput> {
           print('$value\t${details.globalPosition}');
         }
       },
-      theme: const CalculatorThemeData(
+      theme: CalculatorThemeData(
         borderColor: Color.fromARGB(255, 0, 0, 0),
         borderWidth: 5,
         displayColor: Color.fromARGB(255, 255, 255, 255),

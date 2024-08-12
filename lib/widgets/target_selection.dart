@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/database_service.dart';
+import 'package:hive/hive.dart';
 
 class TargetSelection extends StatefulWidget {
   final String category;
@@ -25,6 +26,7 @@ class TargetSelection extends StatefulWidget {
 
 class _TargetSelectionState extends State<TargetSelection> {
   double amount = 0; // 用于显示剩余预算或总收入
+  final Box _cacheBox = Hive.box('cacheBox'); // 使用Hive缓存箱
 
   @override
   void initState() {
@@ -34,21 +36,35 @@ class _TargetSelectionState extends State<TargetSelection> {
 
   Future<void> _loadAmount() async {
     print('更新图表金额');
-    DatabaseService dbService = DatabaseService();
-    if (widget.isExpense) {
-      double budget = await dbService.getRemainingBudget(
-          widget.category, widget.selectedMonth);
-      if (mounted) {
-        setState(() {
-          amount = budget;
-        });
-      }
+    String cacheKey = widget.isExpense
+        ? 'remainingBudget_${widget.category}_${widget.selectedMonth.month}_${widget.selectedMonth.year}'
+        : 'totalIncome_${widget.category}_${widget.selectedMonth.month}_${widget.selectedMonth.year}';
+
+    // 尝试从缓存中获取数据
+    double? cachedAmount = _cacheBox.get(cacheKey);
+
+    if (cachedAmount != null) {
+      setState(() {
+        amount = cachedAmount;
+      });
     } else {
-      double income =
-          await dbService.getTotalIncome(widget.category, widget.selectedMonth);
+      DatabaseService dbService = DatabaseService();
+      double retrievedAmount;
+
+      if (widget.isExpense) {
+        retrievedAmount = await dbService.getRemainingBudget(
+            widget.category, widget.selectedMonth);
+      } else {
+        retrievedAmount = await dbService.getTotalIncome(
+            widget.category, widget.selectedMonth);
+      }
+
+      // 将数据存储到缓存中
+      _cacheBox.put(cacheKey, retrievedAmount);
+
       if (mounted) {
         setState(() {
-          amount = income;
+          amount = retrievedAmount;
         });
       }
     }

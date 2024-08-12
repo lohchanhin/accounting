@@ -1,11 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'budget_screen.dart';
 import 'report_screen.dart';
 import 'settings_screen.dart';
-import '../models/budget.dart';
 import '../models/transaction.dart' as trans;
 import '../widgets/category_selector.dart';
 import '../services/database_service.dart';
@@ -20,7 +18,7 @@ class TransactionScreen extends StatefulWidget {
 
 class _TransactionScreenState extends State<TransactionScreen> {
   final DatabaseService _dbService = DatabaseService(); // 初始化数据库服务
-  final FirebaseFirestore _db = FirebaseFirestore.instance; // 初始化 Firestore
+// 初始化 Firestore
 
   final TextEditingController _noteController =
       TextEditingController(); // 备注控制器
@@ -28,11 +26,11 @@ class _TransactionScreenState extends State<TransactionScreen> {
       TextEditingController(); // 金额控制器
   String _selectedCategory = ''; // 当前选中的类别
   bool _isExpense = true; // 用于标识当前选择的类别是否为支出
-  double _amount = 0.0; // 交易金额
-  List<Budget> _budgets = []; // 预算列表
+// 交易金额
+// 预算列表
   List<Map<String, dynamic>> _categories = []; // 类别列表
   String? _receiptUrl; // 存储发票图片的URL
-  double _totalIncome = 0.0; // 存储特定类别的总收入
+// 存储特定类别的总收入
 
   @override
   void initState() {
@@ -43,10 +41,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
   // 从数据库加载预算
   Future<void> _loadBudgets() async {
-    List<Budget> budgets = await _dbService.getBudgets();
-    setState(() {
-      _budgets = budgets;
-    });
+    setState(() {});
   }
 
   // 从数据库加载类别
@@ -66,11 +61,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
   // 从数据库加载特定类别的总收入
   Future<void> _loadIncome(String category) async {
-    double totalIncome =
-        await _dbService.getTotalIncome(category, DateTime.now());
-    setState(() {
-      _totalIncome = totalIncome;
-    });
+    setState(() {});
   }
 
   // 添加新的交易并更新预算
@@ -90,7 +81,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
     setState(() {
       _noteController.clear();
       _amountController.clear();
-      _amount = 0.0;
     });
 
     // 弹出提示框

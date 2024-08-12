@@ -13,7 +13,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   Future<void> _register() async {
     if (_passwordController.text != _confirmPasswordController.text) {
@@ -25,11 +24,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     try {
-      UserCredential userCredential =
-          await _auth.createUserWithEmailAndPassword(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
       // 註冊成功後跳轉到登入頁面
       Navigator.pop(context);
     } on FirebaseAuthException catch (e) {
