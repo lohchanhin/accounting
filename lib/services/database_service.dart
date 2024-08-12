@@ -243,12 +243,10 @@ class DatabaseService {
           .get();
 
       double amount = 0.0;
-      double spent = 0.0;
 
       if (budgetSnapshot.docs.isNotEmpty) {
         var budget = budgetSnapshot.docs.first;
         amount = budget['amount'] ?? 0.0;
-        spent = budget['spent'] ?? 0.0;
       } else {
         // 没有找到预算记录，创建一个新的预算记录
         await _db.collection('budgets').add({

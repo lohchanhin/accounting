@@ -28,16 +28,16 @@ class _BudgetScreenState extends State<BudgetScreen> {
     _loadCategories(); // 加载预算类别
   }
 
-  // 从数据库加载预算类别
+  // 从数据库或缓存加载预算类别
   Future<void> _loadCategories() async {
     List<BudgetCategory> categories =
-        await _dbService.getCategories(_isExpense);
+        await _dbService.getCategories(_isExpense); // 尝试从缓存获取数据
     setState(() {
       _categories = categories;
     });
   }
 
-  // 添加新类别到数据库
+  // 添加新类别到数据库并更新缓存
   Future<void> _addCategory() async {
     if (_nameController.text.isEmpty) return;
     BudgetCategory newCategory = BudgetCategory(
