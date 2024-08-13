@@ -9,6 +9,11 @@ class DatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance; // 初始化 Firestore
   final Box _cacheBox = Hive.box('cacheBox'); // 使用Hive的缓存箱
 
+  // 清除特定缓存键的数据
+  void clearCache(String cacheKey) {
+    _cacheBox.delete(cacheKey);
+  }
+
   // 添加新的预算记录到 Firestore
   Future<void> addBudget(Budget budget) async {
     await _db.collection('budgets').add({
@@ -17,18 +22,46 @@ class DatabaseService {
       'spent': budget.spent,
       'date': budget.monthYear,
     });
-    _cacheBox.put('budgets', null); // 清空缓存以便下次重新获取
+    String remainingBudgetCacheKey =
+        'remainingBudget_${budget.category}_${budget.monthYear.month}_${budget.monthYear.year}';
+    clearCache(remainingBudgetCacheKey);
+    // _cacheBox.put('budgets', null); // 清空缓存以便下次重新获取
   }
 
   // 更新已有的预算记录
   Future<void> updateBudget(Budget budget) async {
-    await _db.collection('budgets').doc(budget.id).update({
-      'category': budget.category,
-      'amount': budget.amount,
-      'spent': budget.spent,
-      'date': budget.monthYear,
-    });
-    _cacheBox.put('budgets', null); // 清空缓存以便下次重新获取
+    // 查找数据库中是否存在相同类别和月份的预算记录
+    QuerySnapshot existingBudgets = await _db
+        .collection('budgets')
+        .where('category', isEqualTo: budget.category)
+        .where('date', isEqualTo: budget.monthYear)
+        .get();
+
+    if (existingBudgets.docs.isNotEmpty) {
+      // 如果存在记录，更新已有记录
+      String existingBudgetId = existingBudgets.docs.first.id;
+      await _db.collection('budgets').doc(existingBudgetId).update({
+        'category': budget.category,
+        'amount': budget.amount,
+        'spent': budget.spent,
+        'date': budget.monthYear,
+      });
+      print('更新了已有的预算记录');
+    } else {
+      // 如果没有找到记录，添加新预算
+      await _db.collection('budgets').add({
+        'category': budget.category,
+        'amount': budget.amount,
+        'spent': budget.spent,
+        'date': budget.monthYear,
+      });
+      print('创建了新的预算记录');
+    }
+
+    // 清除缓存
+    String remainingBudgetCacheKey =
+        'remainingBudget_${budget.category}_${budget.monthYear.month}_${budget.monthYear.year}';
+    clearCache(remainingBudgetCacheKey);
   }
 
   // 获取所有的预算记录
@@ -53,7 +86,7 @@ class DatabaseService {
     }
   }
 
-  // 添加新的交易记录
+// 添加新的交易记录
   Future<void> addTransaction(trans.Transaction transaction) async {
     await _db.collection('transactions').add({
       'category': transaction.category,
@@ -76,10 +109,24 @@ class DatabaseService {
         'spent': newSpent,
       });
     }
+
+    // 清除相关缓存，确保下次从Firebase获取最新数据
+    String transactionsCacheKey =
+        'transactions_${transaction.category}_${transaction.date.month}_${transaction.date.year}';
+
+    String remainingCacheKey =
+        'remainingBudget_${transaction.category}_${transaction.date.month}_${transaction.date.year}';
+
+    String spendingCacheKey =
+        'spending_${transaction.category}_${transaction.date.month}_${transaction.date.year}';
+
+    clearCache(transactionsCacheKey); // 清除该月份和类别的交易记录缓存
+    clearCache(remainingCacheKey); // 清除该月份和类别的交易记录缓存
+    clearCache(spendingCacheKey); // 清除该月份和类别的交易记录缓存
     _cacheBox.put('transactions', null); // 清空交易缓存
   }
 
-  // 更新已有的交易记录
+// 更新已有的交易记录
   Future<void> updateTransaction(trans.Transaction transaction) async {
     await _db.collection('transactions').doc(transaction.id).update({
       'category': transaction.category,
@@ -89,7 +136,20 @@ class DatabaseService {
       'receiptUrl': transaction.receiptUrl,
       'isExpense': transaction.isExpense,
     });
-    _cacheBox.put('transactions', null); // 清空交易缓存
+
+    // 清除相关缓存
+    String spendingCacheKey =
+        'spending_${transaction.category}_${transaction.date.month}_${transaction.date.year}';
+    String remainingBudgetCacheKey =
+        'remainingBudget_${transaction.category}_${transaction.date.month}_${transaction.date.year}';
+    String totalIncomeCacheKey =
+        'totalIncome_${transaction.category}_${transaction.date.month}_${transaction.date.year}';
+
+    clearCache(spendingCacheKey);
+    clearCache(remainingBudgetCacheKey);
+    clearCache(totalIncomeCacheKey);
+
+    clearCache('transactions'); // 清空交易缓存
   }
 
   // 删除交易记录
@@ -283,17 +343,21 @@ class DatabaseService {
     }
   }
 
-  // 获取某个类别在指定月份的交易记录
+// 获取某个类别在指定月份的交易记录
   Future<List<trans.Transaction>> getTransactionsForCategoryAndMonth(
-      String category, DateTime month) async {
+      String category, DateTime month,
+      {bool forceRefresh = false}) async {
     String cacheKey = 'transactions_${category}_${month.month}_${month.year}';
-    if (_cacheBox.get(cacheKey) != null) {
+
+    if (!forceRefresh && _cacheBox.get(cacheKey) != null) {
+      print("有緩存，取出來");
       return (_cacheBox.get(cacheKey) as List)
           .map((e) => e as trans.Transaction)
           .toList();
     } else {
       DateTime startDate = DateTime(month.year, month.month, 1);
       DateTime endDate = DateTime(month.year, month.month + 1, 1);
+
       QuerySnapshot snapshot = await _db
           .collection('transactions')
           .where('category', isEqualTo: category)
@@ -312,6 +376,7 @@ class DatabaseService {
           isExpense: doc['isExpense'],
         );
       }).toList();
+
       _cacheBox.put(cacheKey, transactions); // 将获取的数据存储到缓存中
       return transactions;
     }

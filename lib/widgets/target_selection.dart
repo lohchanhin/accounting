@@ -8,7 +8,7 @@ class TargetSelection extends StatefulWidget {
   final String selectedCategory;
   final Function(String) onCategorySelected;
   final DateTime selectedMonth;
-  final bool isExpense; // 新增字段标记类别是收入还是支出
+  final bool isExpense; // 标记类别是收入还是支出
 
   const TargetSelection({
     Key? key,
@@ -17,7 +17,7 @@ class TargetSelection extends StatefulWidget {
     required this.selectedCategory,
     required this.onCategorySelected,
     required this.selectedMonth,
-    required this.isExpense, // 初始化字段
+    required this.isExpense,
   }) : super(key: key);
 
   @override
@@ -25,47 +25,76 @@ class TargetSelection extends StatefulWidget {
 }
 
 class _TargetSelectionState extends State<TargetSelection> {
-  double amount = 0; // 用于显示剩余预算或总收入
+  double remainingBudget = 0; // 剩余预算
+  double totalSpentOrIncome = 0; // 总支出或总收入
   final Box _cacheBox = Hive.box('cacheBox'); // 使用Hive缓存箱
 
   @override
   void initState() {
     super.initState();
-    _loadAmount();
+    _loadAmounts();
   }
 
-  Future<void> _loadAmount() async {
-    print('更新图表金额');
-    String cacheKey = widget.isExpense
-        ? 'remainingBudget_${widget.category}_${widget.selectedMonth.month}_${widget.selectedMonth.year}'
-        : 'totalIncome_${widget.category}_${widget.selectedMonth.month}_${widget.selectedMonth.year}';
+  Future<void> _loadAmounts() async {
+    print('更新类别的金额');
 
-    // 尝试从缓存中获取数据
-    double? cachedAmount = _cacheBox.get(cacheKey);
+    DatabaseService dbService = DatabaseService();
 
-    if (cachedAmount != null) {
-      setState(() {
-        amount = cachedAmount;
-      });
-    } else {
-      DatabaseService dbService = DatabaseService();
-      double retrievedAmount;
+    if (widget.isExpense) {
+      String remainingBudgetCacheKey =
+          'remainingBudget_${widget.category}_${widget.selectedMonth.month}_${widget.selectedMonth.year}';
+      String totalSpentCacheKey =
+          'totalSpent_${widget.category}_${widget.selectedMonth.month}_${widget.selectedMonth.year}';
 
-      if (widget.isExpense) {
-        retrievedAmount = await dbService.getRemainingBudget(
-            widget.category, widget.selectedMonth);
-      } else {
-        retrievedAmount = await dbService.getTotalIncome(
-            widget.category, widget.selectedMonth);
-      }
+      // 尝试从缓存中获取剩余预算
+      double? cachedRemainingBudget = _cacheBox.get(remainingBudgetCacheKey);
+      double? cachedTotalSpent = _cacheBox.get(totalSpentCacheKey);
 
-      // 将数据存储到缓存中
-      _cacheBox.put(cacheKey, retrievedAmount);
-
-      if (mounted) {
+      if (cachedRemainingBudget != null && cachedTotalSpent != null) {
         setState(() {
-          amount = retrievedAmount;
+          remainingBudget = cachedRemainingBudget;
+          totalSpentOrIncome = cachedTotalSpent;
         });
+      } else {
+        double retrievedRemainingBudget = await dbService.getRemainingBudget(
+            widget.category, widget.selectedMonth);
+        double retrievedTotalSpent = await dbService.getMonthlySpending(
+            widget.category, widget.selectedMonth);
+
+        // 将数据存储到缓存中
+        _cacheBox.put(remainingBudgetCacheKey, retrievedRemainingBudget);
+        _cacheBox.put(totalSpentCacheKey, retrievedTotalSpent);
+
+        if (mounted) {
+          setState(() {
+            remainingBudget = retrievedRemainingBudget;
+            totalSpentOrIncome = retrievedTotalSpent;
+          });
+        }
+      }
+    } else {
+      String totalIncomeCacheKey =
+          'totalIncome_${widget.category}_${widget.selectedMonth.month}_${widget.selectedMonth.year}';
+
+      // 尝试从缓存中获取总收入
+      double? cachedTotalIncome = _cacheBox.get(totalIncomeCacheKey);
+
+      if (cachedTotalIncome != null) {
+        setState(() {
+          totalSpentOrIncome = cachedTotalIncome;
+        });
+      } else {
+        double retrievedTotalIncome = await dbService.getTotalIncome(
+            widget.category, widget.selectedMonth);
+
+        // 将数据存储到缓存中
+        _cacheBox.put(totalIncomeCacheKey, retrievedTotalIncome);
+
+        if (mounted) {
+          setState(() {
+            totalSpentOrIncome = retrievedTotalIncome;
+          });
+        }
       }
     }
   }
@@ -73,8 +102,9 @@ class _TargetSelectionState extends State<TargetSelection> {
   @override
   void didUpdateWidget(TargetSelection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedCategory != widget.selectedCategory) {
-      _loadAmount();
+    if (oldWidget.selectedCategory != widget.selectedCategory ||
+        oldWidget.selectedMonth != widget.selectedMonth) {
+      _loadAmounts();
     }
   }
 
@@ -110,10 +140,22 @@ class _TargetSelectionState extends State<TargetSelection> {
                     : Colors.black,
               ),
             ),
-            ...[
+            SizedBox(height: 4),
+            Text(
+              widget.isExpense
+                  ? '花费: \$${totalSpentOrIncome.toStringAsFixed(2)}'
+                  : '收入: \$${totalSpentOrIncome.toStringAsFixed(2)}',
+              style: TextStyle(
+                color: widget.selectedCategory == widget.category
+                    ? Colors.white
+                    : Colors.black,
+                fontSize: 12,
+              ),
+            ),
+            if (widget.isExpense) ...[
               SizedBox(height: 4),
               Text(
-                '\$${amount.toStringAsFixed(2)}', // 显示剩余预算或总收入
+                '餘額: \$${remainingBudget.toStringAsFixed(2)}',
                 style: TextStyle(
                   color: widget.selectedCategory == widget.category
                       ? Colors.white

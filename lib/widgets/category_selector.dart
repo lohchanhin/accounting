@@ -79,7 +79,7 @@ class _CategorySelectorState extends State<CategorySelector> {
           child: GridView.builder(
             padding: const EdgeInsets.all(8.0),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
+              crossAxisCount: 2,
               crossAxisSpacing: 8.0,
               mainAxisSpacing: 8.0,
             ),

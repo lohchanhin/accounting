@@ -34,13 +34,17 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
   }
 
   Future<void> _loadCategoryDetails() async {
+    // 清除相关缓存，确保从数据库获取最新数据
+    // _clearCache(widget.category, widget.month);
+
     if (widget.isExpense) {
       double remainingBudget =
           await _dbService.getRemainingBudget(widget.category, widget.month);
       double monthlySpent =
           await _dbService.getMonthlySpending(widget.category, widget.month);
       List<trans.Transaction> transactions = await _dbService
-          .getTransactionsForCategoryAndMonth(widget.category, widget.month);
+          .getTransactionsForCategoryAndMonth(widget.category, widget.month,
+              forceRefresh: true);
 
       setState(() {
         _monthlyBudget = remainingBudget + monthlySpent;
@@ -49,7 +53,8 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
       });
     } else {
       List<trans.Transaction> transactions = await _dbService
-          .getTransactionsForCategoryAndMonth(widget.category, widget.month);
+          .getTransactionsForCategoryAndMonth(widget.category, widget.month,
+              forceRefresh: true);
       double totalIncome =
           transactions.fold(0.0, (sum, item) => sum + item.amount);
 
@@ -60,7 +65,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     }
   }
 
-  // 显示修改预算的对话框
+// 显示修改预算的对话框
   void _showEditBudgetDialog() {
     final TextEditingController _editBudgetController =
         TextEditingController(text: _currentBudget?.amount.toString());

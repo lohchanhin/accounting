@@ -52,7 +52,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
     }
   }
 
-  // 添加新的交易并更新预算
+  // 添加或更新交易并更新预算
   Future<void> _addTransaction(
       String category, double amount, String note) async {
     try {
@@ -67,6 +67,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
       );
 
       await _dbService.addTransaction(newTransaction);
+      _clearCacheAndRefresh(category);
+
       setState(() {
         _noteController.clear();
         _amountController.clear();
@@ -77,6 +79,22 @@ class _TransactionScreenState extends State<TransactionScreen> {
     } catch (e) {
       print("添加交易时发生错误: $e");
     }
+  }
+
+  // 清空缓存并刷新UI
+  void _clearCacheAndRefresh(String category) async {
+    String spendingCacheKey =
+        'spending_${category}_${DateTime.now().month}_${DateTime.now().year}';
+    String remainingBudgetCacheKey =
+        'remainingBudget_${category}_${DateTime.now().month}_${DateTime.now().year}';
+    String totalIncomeCacheKey =
+        'totalIncome_${category}_${DateTime.now().month}_${DateTime.now().year}';
+
+    _dbService.clearCache(spendingCacheKey);
+    _dbService.clearCache(remainingBudgetCacheKey);
+    _dbService.clearCache(totalIncomeCacheKey);
+
+    _loadCategories(); // 刷新类别数据
   }
 
   // 显示确认对话框

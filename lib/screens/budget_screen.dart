@@ -3,6 +3,7 @@ import '../services/database_service.dart';
 import '../models/budget_category.dart';
 import '../screens/categoryDetailScreen.dart';
 import '../models/budget.dart';
+import 'package:month_year_picker/month_year_picker.dart';
 
 class BudgetScreen extends StatefulWidget {
   const BudgetScreen({super.key});
@@ -68,71 +69,55 @@ class _BudgetScreenState extends State<BudgetScreen> {
     // 根据新月份更新预算或消费数据
   }
 
-  // 显示月份选择器
-  void _showMonthPicker(BuildContext context) {
-    showDatePicker(
+  void _showMonthPicker(BuildContext context) async {
+    final pickedMonth = await showMonthYearPicker(
       context: context,
       initialDate: _selectedMonth,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
-      selectableDayPredicate: (DateTime val) => val.day == 1,
-    ).then((pickedDate) {
-      if (pickedDate != null && pickedDate != _selectedMonth) {
-        _onMonthChanged(pickedDate);
-      }
-    });
-  }
-
-  // 显示修改预算的对话框
-  void _showEditBudgetDialog(BudgetCategory category) async {
-    final TextEditingController _editBudgetController = TextEditingController();
-    double monthlySpending =
-        await _dbService.getMonthlySpending(category.name, _selectedMonth);
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('修改预算 - ${category.name}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _editBudgetController,
-                decoration: InputDecoration(labelText: '每月预算'),
-                keyboardType: TextInputType.number,
+      locale: Locale('zh'), // 设置语言环境为中文
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            primaryColor: Colors.deepPurple, // 强调色
+            textTheme: TextTheme(
+              titleLarge:
+                  TextStyle(fontSize: 24, fontWeight: FontWeight.bold), // 月份标题
+              titleMedium: TextStyle(fontSize: 20), // 年份选择器
+              bodyLarge: TextStyle(fontSize: 18), // 月份文本
+            ),
+            dialogBackgroundColor: Colors.white, // 选择器背景颜色
+            buttonTheme: ButtonThemeData(
+              textTheme: ButtonTextTheme.primary,
+              padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            ),
+            cardTheme: CardTheme(
+              margin: EdgeInsets.all(12.0), // 调整卡片的边距
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.0), // 圆角
               ),
-              SizedBox(height: 10),
-              Text('本月已花费: \$${monthlySpending.toStringAsFixed(2)}'),
-            ],
+              elevation: 4, // 调整阴影
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.deepPurple,
+                textStyle: TextStyle(fontSize: 16), // 按钮文字大小
+              ),
+            ),
+            colorScheme: ColorScheme.fromSwatch()
+                .copyWith(secondary: Colors.deepPurpleAccent),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('取消'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                double? newBudget = double.tryParse(_editBudgetController.text);
-                if (newBudget != null) {
-                  Budget updatedBudget = Budget(
-                    id: '',
-                    category: category.name,
-                    monthYear: _selectedMonth,
-                    amount: newBudget,
-                    spent: monthlySpending,
-                  );
-                  await _dbService.addBudget(updatedBudget);
-                  _loadCategories(); // 更新类别列表
-                  Navigator.of(context).pop();
-                }
-              },
-              child: Text('保存'),
-            ),
-          ],
+          child: child!,
         );
       },
     );
+
+    if (pickedMonth != null && pickedMonth != _selectedMonth) {
+      _onMonthChanged(pickedMonth);
+    }
   }
+
+  // 显示修改预算的对话框
 
   // 跳转到类别详细页面
   void _navigateToCategoryDetail(BudgetCategory category) {
