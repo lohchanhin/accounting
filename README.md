@@ -73,7 +73,7 @@ My Accounting App is a mobile application designed to help users manage their pe
 
 You can watch a demo of the app in action:
 
-[![Demo Video](assets/homePage.jpg)](assets/record.mp4)
+[![Demo Video](assets/HomePage.jpg)](assets/record.mp4)
 
 ## Installation
 
