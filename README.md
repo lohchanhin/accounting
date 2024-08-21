@@ -61,7 +61,7 @@ My Accounting App is a mobile application designed to help users manage their pe
 ![Register Screen](assets/register.png)
 
 ### Home Page
-![Home Page](assets/HomePage.jpg)
+![Home Page](assets/HomePage.png)
 
 ### New Transaction Screen
 ![New Transaction Screen](assets/newTrancsaction.png)
