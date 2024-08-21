@@ -52,13 +52,36 @@ My Accounting App is a mobile application designed to help users manage their pe
   - 自定義應用設置，如通知、語言和主題。
   - 將數據備份到雲端並從雲端恢復數據。
 
+## Screenshots
+
+### Login Screen
+![Login Screen](assets/login.png)
+
+### Register Screen
+![Register Screen](assets/register.png)
+
+### Home Page
+![Home Page](assets/HomePage.jpg)
+
+### New Transaction Screen
+![New Transaction Screen](assets/newTrancsaction.png)
+
+### Budget Management Screen
+![Budget Management Screen](assets/budget.png)
+
+## Demo Video
+
+You can watch a demo of the app in action:
+
+[![Demo Video](assets/homePage.jpg)](assets/record.mp4)
+
 ## Installation
 
 To run this project locally, follow these steps:
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-username/my_accounting_app.git
+   git clone https://github.com/lohchanhin/accounting.git
    cd my_accounting_app
 
 2. **Install dependencies:**
@@ -72,20 +95,9 @@ To run this project locally, follow these steps:
 4. **Run the app**
     flutter run
 
+## 中文安装说明
 
-1.**克隆存儲庫：**
-    bash
-    複製程式碼
-    git clone https://github.com/your-username/my_accounting_app.git
-    cd my_accounting_app
-
-2.**安裝依賴：**
-    flutter pub get
-
-3.**設置 Firebase：**
-    在 Firebase Console 創建一個 Firebase 項目。
-    將 iOS 和 Android 應用添加到 Firebase 項目。
-    下載 google-services.json（適用於 Android）和 GoogleService-Info.plist（適用於 iOS）文件，並根據 Firebase 文檔將它們放置在相應的目錄中。
-
-4.**運行應用：**
-    flutter run
+1. **克隆存儲庫：**
+   ```bash
+   git clone https://github.com/your-username/my_accounting_app.git
+   cd my_accounting_app

@@ -14,6 +14,7 @@ void main() async {
 
   // 初始化 Firebase
   await Firebase.initializeApp();
+  // await clearAllCache();
 
   // 初始化 Hive
   await Hive.initFlutter();
